@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% load static %}
-{% block title %}{% if mode == 'admin' %}Live Monitor — {{ scenario.name }}{% else %}Battle {{ room_code }}{% endif %} · AI-DSSW{% endblock %}
+{% block title %}{% if mode == 'admin' %}Live Monitor — {{ scenario.name }}{% else %}Battle {{ room_code }}{% endif %} · Armoured Battle Console{% endblock %}
 {% block cesium_css %}<link href="https://cdn.jsdelivr.net/npm/cesium@{{ CESIUM_VERSION }}/Build/Cesium/Widgets/widgets.css" rel="stylesheet">{% endblock %}
 {% block body_class %}fullscreen{% endblock %}
 {% block nav %}{% endblock %}
@@ -71,11 +71,14 @@
       <button class="btn btn-tac btn-sm" id="t-2d" title="2D / 3D">2D/3D</button>
       <div class="dropup">
         <button class="btn btn-tac btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside"><i class="bi bi-layers"></i></button>
-        <div class="dropdown-menu dropdown-menu-end p-2 small" style="min-width:210px">
+        <div class="dropdown-menu dropdown-menu-end p-2 small" style="min-width:230px;max-width:280px;max-height:70vh;overflow-y:auto">
           <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="l-zones" checked><label class="form-check-label" for="l-zones">Zones</label></div>
           <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="l-corridors" checked><label class="form-check-label" for="l-corridors">Avenues of approach</label></div>
           <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="l-grid" checked><label class="form-check-label" for="l-grid">Numbered grid</label></div>
           <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="l-borders" checked><label class="form-check-label" for="l-borders">Borders &amp; LoC</label></div>
+          <hr class="my-2"><div class="form-label mb-1">Geographic layers (map view)</div>
+          <div id="l-vector"></div>
+          <hr class="my-2">
           <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="l-labels" checked><label class="form-check-label" for="l-labels">Unit labels</label></div>
           <div class="form-check form-switch admin-only"><input class="form-check-input" type="checkbox" id="l-fog"><label class="form-check-label" for="l-fog">Fog of war (players)</label></div>
           <hr class="my-2"><label class="form-label mb-1">Imagery</label>
@@ -225,5 +228,5 @@
 <script>window.CESIUM_BASE_URL = 'https://cdn.jsdelivr.net/npm/cesium@{{ CESIUM_VERSION }}/Build/Cesium/';</script>
 <script src="https://cdn.jsdelivr.net/npm/cesium@{{ CESIUM_VERSION }}/Build/Cesium/Cesium.js"></script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
-<script type="module" src="{% static 'js/battle.js' %}"></script>
+<script type="module" src="{% static 'js/battle.js' %}?v=ride6"></script>
 {% endblock %}

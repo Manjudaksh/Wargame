@@ -1,4 +1,5 @@
 .venv/
+.venv-local/
 __pycache__/
 *.pyc
 staticfiles/
@@ -8,6 +9,7 @@ staticfiles/
 /data/pg-sock/
 /data/*.log
 /data/*.sqlite3*
+/data/vectors/
 /data/.secret-key
 /data/.jwt-secret
 /data/smoke_room.json

@@ -2,9 +2,10 @@
 import { api, esc, Socket, toast } from './api.js';
 import { centroid, compass, gridRef, pointInPolygon } from './geo.js';
 import { clearLayer, createGlobe, drawCorridors, drawZones, home, pickLocal, search, setImagery, setLayer, toggle2D } from './globe.js';
+import { mountLayerToggles } from './vectortiles.js';
 import { DriveController } from './hud.js';
 import { BattleScene, TEAM } from './scene.js';
-import { GroundView } from './ground/view.js';
+import { GroundView } from './ground/view.js?v=ride6';
 import { audio } from './ground/audio.js';
 
 const C = Cesium;
@@ -684,6 +685,7 @@ function wireUi() {
   $('#l-corridors').onchange = (e) => setLayer(S.g, 'corridors', e.target.checked);
   $('#l-grid').onchange = (e) => setLayer(S.g, 'grid', e.target.checked);
   $('#l-borders').onchange = (e) => setLayer(S.g, 'borders', e.target.checked);
+  mountLayerToggles($('#l-vector'), S.g.vectors);
   $('#l-labels').onchange = (e) => allScenes().forEach((x) => (x.showLabels = e.target.checked));
   $('#l-fog').onchange = (e) => sock.request('fog', { enabled: e.target.checked }).then(() => toast(`Fog of war ${e.target.checked ? 'enabled' : 'disabled'} for players`, 'ok'));
   $('#l-imagery').onchange = (e) => setImagery(S.g, e.target.value);
@@ -735,6 +737,8 @@ function wireUi() {
     sel.onchange = () => { S.adminPlanSide = sel.value; S.plan = structuredClone(S.lobby.plans[sel.value] || { side: sel.value, formations: [], hvt: null }); renderLobby(); renderDeployMarks(); };
     $('#lb-suggest').before(sel);
   }
+  // .battle-wrap is position:fixed (its own stacking context): a modal left inside it sits under Bootstrap's body-level backdrop and cannot be clicked
+  document.querySelectorAll('#app .modal').forEach((m) => document.body.appendChild(m));
   $('#r-again').onclick = async () => { try { await sock.request('play_again'); } catch (e) { toast(e.message, 'warn'); } };
 }
 

@@ -8,3 +8,9 @@ numpy>=1.26               # BSD-3
 Pillow>=10                # MIT-CMU (HPND)
 psycopg[binary]>=3.1      # LGPL-3 — only needed for PostgreSQL
 pytest>=8                 # MIT — tests
+# Regional vector tiles (vectordata/): prebuilt wheels, no system GDAL needed
+shapely>=2.0              # BSD-3
+pyproj>=3.6               # MIT — coordinate reference systems
+pyshp>=2.3                # MIT — Shapefile reader
+mapbox-vector-tile>=2.1   # MIT — MVT encoder
+osmium>=4.0               # BSD-2 — OpenStreetMap PBF reader

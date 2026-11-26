@@ -83,7 +83,12 @@ See [`docs/GAMEPLAY.md`](docs/GAMEPLAY.md#village-skirmish-pubg-style-mode).
 | `python tools/gen_models.py` | regenerate the 3D unit models (`webapp/static/models/*.glb`) |
 | `python tools/fetch_borders.py` | rebuild `webapp/static/data/borders.geojson` |
 
-API documentation: `/api/docs/` (Swagger UI), schema at `/api/schema/`, WebSocket protocol in [`docs/API.md`](docs/API.md).
+API documentation (admin accounts only): `/api/docs/` (Swagger UI), schema at `/api/schema/`, WebSocket protocol in [`docs/API.md`](docs/API.md).
+
+## Regional vector tiles
+
+Admins upload GeoJSON, Shapefile, GeoPackage or OSM PBF data per region (**Vector Data** menu) and the map shows it
+as switchable layers. See [`docs/VECTOR_DATA.md`](docs/VECTOR_DATA.md).
 
 ## Production notes
 

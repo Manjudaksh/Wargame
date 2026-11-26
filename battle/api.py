@@ -31,8 +31,8 @@ from sim.inventory import (AIR_CLASSES, CLASS_LABEL, DOCTRINES, FORMATION_IDS, F
 from sim.physics import GROUND
 from sim.theatres import THEATRES, TIME_OF_DAY, WEATHER, theatre_by_id
 
-from . import services
-from .models import (AdvisorLog, Battle, BattleEvent, Casualty, Entity, ForceKey, HVT, OrbatNode, Platform, Player,
+from . import borders, services
+from .models import (AdvisorLog, Battle, BorderLayer, BattleEvent, Casualty, Entity, ForceKey, HVT, OrbatNode, Platform, Player,
                      Scenario, TerrainGrid, Tick, Weapon, Zone)
 from .rooms import RoomError, registry
 
@@ -798,6 +798,74 @@ def skirmish(request):
         return err('unknown time of day')
     s = services.create_skirmish(request.user, theatre, time_of_day=tod, weather=request.data.get('weather', 'CLEAR'))
     return _quickplay(request, s)
+
+
+# ── border vector layer (admin-managed) ────────────────────────────────────
+
+@doc(tags=['borders'], summary='The live border vector layer shown on the map (published upload, else the built-in data)')
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def borders_live(request):
+    data = borders.live()
+    etag = f'"b{data["version"]}"'
+    if request.headers.get('If-None-Match') == etag:
+        resp = HttpResponse(status=304)
+    else:
+        resp = Response(data)
+    resp['ETag'] = etag
+    resp['Cache-Control'] = 'no-cache'  # always revalidate: a new publish shows up on the next check
+    return resp
+
+
+@doc(tags=['borders'], summary='Version number of the live border layer (cheap poll for auto-refresh)')
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def borders_version(request):
+    row = BorderLayer.objects.filter(status='PUBLISHED').values('version').first()
+    resp = Response(dict(version=row['version'] if row else 0))
+    resp['Cache-Control'] = 'no-cache'
+    return resp
+
+
+@doc(tags=['borders'], summary='List border layer versions (staff) / upload a new one as a draft (multipart: file, note, publish=1)')
+@api_view(['GET', 'POST'])
+@permission_classes([IsStaff])
+def border_layers(request):
+    if request.method == 'GET':
+        return Response([r.summary() for r in BorderLayer.objects.select_related('uploaded_by')])
+    f = request.FILES.get('file')
+    if not f:
+        return err('choose a GeoJSON file to upload')
+    if f.size > borders.MAX_BYTES:
+        return err(f'file is larger than {borders.MAX_BYTES // 1048576} MB')
+    try:
+        layer = borders.create_draft(f.read(), f.name, request.user, request.data.get('note', ''))
+    except borders.BorderError as e:
+        return Response({'error': 'validation failed', 'errors': e.errors}, status=400)
+    if str(request.data.get('publish', '')).lower() in ('1', 'true', 'yes'):
+        borders.publish(layer)
+    return Response(layer.summary(), status=201)
+
+
+@doc(tags=['borders'], summary='One border layer incl. geometry (staff preview) / delete a non-published version')
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsStaff])
+def border_layer(request, lid):
+    layer = get_object_or_404(BorderLayer, id=lid)
+    if request.method == 'DELETE':
+        if layer.status == 'PUBLISHED':
+            return err('this version is live; publish another version first', 409)
+        layer.delete()
+        return Response(status=204)
+    return Response(dict(layer.summary(), geojson=layer.geojson))
+
+
+@doc(tags=['borders'], summary='Publish a version: it becomes the live layer and the previous one is archived (also used to roll back)')
+@api_view(['POST'])
+@permission_classes([IsStaff])
+def border_publish(request, lid):
+    layer = get_object_or_404(BorderLayer, id=lid)
+    return Response(borders.publish(layer).summary())
 
 
 @doc(tags=['terrain'], summary='Binary terrain for the 3D renderer: u32 meta length · meta JSON · pad4 · float32 elevation · uint8 ground')

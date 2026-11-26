@@ -1,4 +1,4 @@
-"""Django settings for the AI-DSSW Armoured Battle Console.
+"""Django settings for the Armoured Battle Console.
 
 Everything is configurable through environment variables; defaults give a zero-setup local
 install (SQLite, in-memory channel layer).
@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'battle',
     'webapp',
+    'vectordata',
 ]
 
 MIDDLEWARE = [
@@ -128,20 +129,31 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],  # no browsable API pages
     'DEFAULT_THROTTLE_CLASSES': ['rest_framework.throttling.AnonRateThrottle', 'rest_framework.throttling.UserRateThrottle'],
     'DEFAULT_THROTTLE_RATES': {'anon': '120/min', 'user': '2000/min', 'join': '20/min'},
 }
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'AI-DSSW Armoured Battle Console API',
+    'TITLE': 'Armoured Battle Console API',
     'DESCRIPTION': 'Scenario administration, terrain, zones, force keys, battles/ticks, analytics, assets and ORBAT. '
                    'Live play uses the WebSocket protocol at /ws/battle/<room_code>/ (see SKILL.md §6).',
     'VERSION': '1.0.0',
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAdminUser'],  # /api/docs/ and /api/schema/: staff only
 }
 
 LOGGING = {
     'version': 1, 'disable_existing_loggers': False,
     'handlers': {'console': {'class': 'logging.StreamHandler'}},
     'loggers': {'battle': {'handlers': ['console'], 'level': os.environ.get('LOG_LEVEL', 'INFO')}},
+}
+
+# Regional vector tiles (map visualisation only). Source files and tiles are kept on disk, metadata in the database.
+VECTOR_DATA = {
+    'ROOT': Path(os.environ.get('VECTOR_ROOT', DATA_DIR / 'vectors')),
+    'MAX_UPLOAD_MB': int(os.environ.get('VECTOR_MAX_UPLOAD_MB', '300')),
+    'MIN_ZOOM': 7,
+    'MAX_ZOOM': 14,  # the map keeps drawing these tiles sharply when zoomed in further
+    'INLINE': False,  # True processes inside the request (tests only)
 }
 
 # Game settings

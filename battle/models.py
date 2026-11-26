@@ -71,6 +71,37 @@ class TerrainGrid(models.Model):
     created = models.DateTimeField(auto_now=True)
 
 
+class BorderLayer(models.Model):
+    """Admin-managed border vector data shown on the Armoured Battle map.
+    Exactly one row is PUBLISHED at a time; older ones are kept as ARCHIVED so a rollback is one click."""
+    STATUS = [('DRAFT', 'Uploaded (not live)'), ('PUBLISHED', 'Published (live)'), ('ARCHIVED', 'Archived')]
+
+    version = models.PositiveIntegerField(unique=True)
+    filename = models.CharField(max_length=200)
+    status = models.CharField(max_length=10, choices=STATUS, default='DRAFT')
+    geojson = models.JSONField()  # normalised FeatureCollection, WGS84
+    feature_count = models.IntegerField(default=0)
+    vertex_count = models.IntegerField(default=0)
+    bbox = models.JSONField(default=list)  # [west, south, east, north]
+    size_bytes = models.IntegerField(default=0)
+    range_km = models.FloatField(default=100)
+    report = models.JSONField(default=dict, blank=True)  # validation warnings + stats
+    note = models.CharField(max_length=300, blank=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-version']
+
+    def summary(self) -> dict:
+        return dict(id=self.id, version=self.version, filename=self.filename, status=self.status,
+                    feature_count=self.feature_count, vertex_count=self.vertex_count, bbox=self.bbox,
+                    size_bytes=self.size_bytes, range_km=self.range_km, report=self.report, note=self.note,
+                    uploaded_by=self.uploaded_by.get_username() if self.uploaded_by else None,
+                    created=self.created.isoformat(), published_at=self.published_at.isoformat() if self.published_at else None)
+
+
 class Zone(models.Model):
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, related_name='zones')
     side = models.CharField(max_length=4, choices=SIDE_CHOICES)

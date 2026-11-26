@@ -18,8 +18,9 @@ import { GroundTerrain, loadTerrainData } from './terrain.js';
 import { GroundFx, toThree } from './fx.js';
 import { Vegetation } from './veg.js';
 import { audio } from './audio.js';
-import { loadSoldierKit, makeSoldier } from './soldier.js';
+import { loadSoldierKit, makeSoldier } from './soldier.js?v=ride6';
 import { Loot, Village, makeVehicle } from './village.js';
+import { rideRig, poseRider, unrideRider, resetToBind } from './ride.js?v=ride6';
 
 const PROCEDURAL = new Set(['car', 'bike', 'jeep']);
 
@@ -491,9 +492,15 @@ export class GroundView {
   setLocalMove(m) { this.local = m ? { ...(this.local || {}), ...m } : null; }
   updateSoldier(v, a, b, k, dt, now) {
     const mounted = !!b.mt;
-    v.root.visible = !mounted;
+    const bike = mounted ? this.units.get(b.mt) : null;
+    const onBike = !!(bike && bike.spec?.model === 'bike' && v.mixer && v.model);
+    // a rider is hidden only when we look from inside its own bike (driver / scope view)
+    const ownBikeView = onBike && this.camTarget === b.mt && (this.camMode === 'scope' || CAM_VIEWS[this.viewIdx]?.id === 'driver');
+    v.root.visible = !mounted || (onBike && !ownBikeView);
     let x = lerp(a.x, b.x, k), y = lerp(a.y, b.y, k), h = lerpA(a.h, b.h, k);
     const L = this.local;
+    // while mounted the prediction is not run; drop it so getting off starts from the server's dismount spot
+    if (mounted && L && L.id === v.id) L.pos = null;
     const own = L && L.id === v.id && this.camTarget === v.id && !v.dead && !mounted;
     let mv = 0, fwd = Math.sign(b.th || 0), strafe = 0;
     if (own) {
@@ -523,6 +530,8 @@ export class GroundView {
     v.root.position.set(x, z, -y);
     v.root.rotation.set(0, Math.PI - h * DEG, 0, 'YXZ');
     v.bar.visible = this.showLabels && !own && !mounted && !v.dead && !(this.village && this.mySide && v.side !== this.mySide);
+    if (onBike) return this.seatOnBike(v, bike, dt);
+    if (v.rig?.hid) unrideRider(v.rig);
     if (!v.mixer || mounted) return;
     // animation state machine
     const crouch = b.stn === 'CROUCH';
@@ -544,6 +553,15 @@ export class GroundView {
     const far = this.camera.position.distanceToSquared(v.root.position) > 350 * 350;
     v.animAcc = (v.animAcc || 0) + dt;
     if (!far || v.animAcc > 0.1) { v.mixer.update(v.animAcc); v.animAcc = 0; }
+  }
+  /** Rider on a motorbike: hips on the seat, hands on the bars, feet on the pegs (see ride.js). */
+  seatOnBike(v, bike, dt) {
+    v.model.scale.y = 1;
+    if (!v.rig) v.rig = rideRig(v.model);
+    resetToBind(v.rig); // start from the bind pose, not whatever walk/run frame the bones were left in
+    this.soldierAnim(v, 'Idle_Gun', 0.2, 1);
+    v.mixer.update(dt);
+    poseRider(v.rig, v.root, bike.root);
   }
   removeUnit(v) {
     v.removed = true;
@@ -865,7 +883,8 @@ export class GroundView {
     const dt = Math.min(0.1, this.clock.getDelta());
     const now = performance.now() / 1000;
     const k = this.alpha();
-    for (const v of this.units.values()) this.updateUnit(v, k, dt, now);
+    for (const v of this.units.values()) if (!v.soldier) this.updateUnit(v, k, dt, now);
+    for (const v of this.units.values()) if (v.soldier) this.updateUnit(v, k, dt, now); // riders follow their bike's final pose
     for (const p of this.projectiles.values()) this.updateProjectile(p, k, now);
     this.updateCamera(dt, now);
     // focus point drives terrain detail, shadows and vegetation

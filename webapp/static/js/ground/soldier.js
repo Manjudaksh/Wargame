@@ -94,6 +94,7 @@ export function makeSoldier(kit, side) {
   m.scale.setScalar(kit.scale);
   m.position.y = -kit.minY * kit.scale;
   const mats = [];
+  m.traverse((o) => { if (o.isBone) { o.userData.bq = o.quaternion.clone(); o.userData.bp = o.position.clone(); } }); // bind pose, for ride.js
   m.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;

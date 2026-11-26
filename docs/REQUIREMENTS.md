@@ -1,4 +1,4 @@
-# AI-DSSW Armoured Battle Console — Consolidated Requirements
+# Armoured Battle Console — Consolidated Requirements
 
 Stack (mandated by the product owner): **Django (Python) backend, PostgreSQL, HTML/CSS/Bootstrap frontend**,
 tick-based Python simulation. See `SKILL.md`.

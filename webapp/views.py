@@ -65,6 +65,18 @@ def assets(request):
 
 @staff_member_required(login_url='login')
 @ensure_csrf_cookie
+def borders(request):
+    return render(request, 'console/borders.html')
+
+
+@staff_member_required(login_url='login')
+@ensure_csrf_cookie
+def vector_data(request):
+    return render(request, 'console/vectordata.html')
+
+
+@staff_member_required(login_url='login')
+@ensure_csrf_cookie
 def orbat(request):
     return render(request, 'console/orbat.html')
 

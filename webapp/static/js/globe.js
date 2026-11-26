@@ -1,6 +1,7 @@
 // CesiumJS globe on free/open data only (C-1): AWS Terrain Tiles (terrarium) elevation,
 // EOX Sentinel-2 cloudless imagery, OpenStreetMap, Natural Earth borders (India POV + LoC).
 import { LocalFrame, gridRef } from './geo.js';
+import { attachVectorLayers } from './vectortiles.js';
 
 const TERRARIUM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const DEG = Math.PI / 180;
@@ -123,6 +124,7 @@ export async function createGlobe(opts) {
   const dbg = new URLSearchParams(location.search).get('debug') || '';
   g.debug = dbg;
   if (!dbg.includes('nooverlay')) { loadBorders(g).catch((e) => console.warn('borders', e)); buildGrid(g); }
+  if (!dbg.includes('novector')) g.vectors = attachVectorLayers(g);
   if (!dbg.includes('noquality')) adaptiveQuality(g, opts.lowPower);
   if (dbg.includes('nolight')) { scene.globe.enableLighting = false; }
   home(g, 0.9);
@@ -202,22 +204,59 @@ function text(ctx, str, x, y, { color = '#fff', size = 22, weight = 700, align =
 // One composite AO overlay (borders, AO frame, zones, corridors, coarse grid + numbers) plus a fine
 // 1 km grid for close zoom and a coarse regional border layer for the strategic view. Every extra
 // imagery layer is blended into every terrain tile, so keep the visible count at ≤ 2.
-async function loadBorders(g) {
-  const res = await fetch('/static/data/borders.geojson');
-  g.borderData = await res.json();
-  const paint = (ctx, toPx) => {
-    for (const f of g.borderData.features) {
-      const loc = f.properties.kind === 'loc';
+// Border vector data is admin-managed (Console → Border Data). The map reads the live published layer
+// from /api/borders/ and re-checks its version every 30 s, so a new publish appears without a reload.
+const BORDER_POLL_MS = 30000;
+
+/** Paint border features (LineString / Polygon, lon/lat) with a dark casing + coloured stroke. */
+function paintBorderFeatures(ctx, ll, features, { casing, width, dash }) {
+  for (const f of features) {
+    const gm = f.geometry;
+    const rings = gm.type === 'LineString' ? [gm.coordinates] : gm.coordinates;
+    const kind = f.properties.kind;
+    const color = kind === 'loc' ? '#ff8c42' : kind === 'area' ? '#7fd1ae' : '#ffd166';
+    for (const ring of rings) {
       ctx.beginPath();
-      f.geometry.coordinates.forEach((p, i) => { const [a, b] = toPx(p[0], p[1]); i ? ctx.lineTo(a, b) : ctx.moveTo(a, b); });
-      ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 3.5; ctx.setLineDash([]); ctx.stroke();
-      ctx.strokeStyle = loc ? '#ff8c42' : '#ffd166'; ctx.lineWidth = 2; ctx.setLineDash(loc ? [8, 6] : []); ctx.stroke();
+      ring.forEach((p, i) => { const [a, b] = ll(p[0], p[1]); i ? ctx.lineTo(a, b) : ctx.moveTo(a, b); });
+      if (gm.type === 'Polygon') { ctx.fillStyle = 'rgba(255,209,102,.08)'; ctx.fill(); }
+      ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = casing; ctx.setLineDash([]); ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(kind === 'loc' ? dash : []); ctx.stroke();
     }
-    ctx.setLineDash([]);
-  };
-  const layer = await overlay(g, 'borders_region', paint, { rect: { w: 64, s: 20, e: 84, n: 38 }, px: 4096, lonlat: true });
-  layer.show = g.scene.camera.positionCartographic.height > 120000;
+  }
+  ctx.setLineDash([]);
+}
+
+function borderRect(bbox) {
+  const [w, s, e, n] = bbox && bbox.length === 4 ? bbox : [64, 20, 84, 38];
+  const padx = Math.max(1, (e - w) * 0.05), pady = Math.max(1, (n - s) * 0.05);
+  return { w: Math.max(-180, w - padx), s: Math.max(-85, s - pady), e: Math.min(180, e + padx), n: Math.min(85, n + pady) };
+}
+
+async function loadBorders(g) {
+  let data;
+  try {
+    const res = await fetch('/api/borders/', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (e) {  // API unreachable → bundled data keeps the map usable
+    console.warn('borders api', e);
+    data = { version: -1, bbox: null, geojson: await (await fetch('/static/data/borders.geojson')).json() };
+  }
+  g.borderData = data.geojson;
+  g.borderVersion = data.version;
+  const paint = (ctx, toPx) => paintBorderFeatures(ctx, toPx, g.borderData.features, { casing: 3.5, width: 2, dash: [8, 6] });
+  const layer = await overlay(g, 'borders_region', paint, { rect: borderRect(data.bbox), px: 4096, lonlat: true });
+  layer.show = g.mapState.show.borders && g.scene.camera.positionCartographic.height > 120000;
   redrawMap(g);
+  if (!g._borderPoll) {
+    g._borderPoll = setInterval(async () => {
+      if (g.viewer.isDestroyed()) { clearInterval(g._borderPoll); return; }
+      try {
+        const v = await (await fetch('/api/borders/version/', { cache: 'no-cache' })).json();
+        if (v.version !== g.borderVersion) await loadBorders(g);
+      } catch { /* transient network error: try again next tick */ }
+    }, BORDER_POLL_MS);
+  }
 }
 
 export function redrawMap(g) {
@@ -272,14 +311,7 @@ function paintMap(g) {
     if (st.show.borders && g.borderData) {
       const r = aoRect(g);
       const ll = (lon, lat) => [((lon - r.w) / (r.e - r.w)) * OVERLAY_PX, ((r.n - lat) / (r.n - r.s)) * OVERLAY_PX];
-      for (const f of g.borderData.features) {
-        const loc = f.properties.kind === 'loc';
-        ctx.beginPath();
-        f.geometry.coordinates.forEach((p, i) => { const [a, b] = ll(p[0], p[1]); i ? ctx.lineTo(a, b) : ctx.moveTo(a, b); });
-        ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 8; ctx.setLineDash([]); ctx.stroke();
-        ctx.strokeStyle = loc ? '#ff8c42' : '#ffd166'; ctx.lineWidth = 5; ctx.setLineDash(loc ? [22, 14] : []); ctx.stroke();
-      }
-      ctx.setLineDash([]);
+      paintBorderFeatures(ctx, ll, g.borderData.features, { casing: 8, width: 5, dash: [22, 14] });
     }
   });
 }

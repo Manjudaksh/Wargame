@@ -1,9 +1,9 @@
 ---
 name: ai-dssw-wargame
-description: Build, extend and debug the AI-DSSW Armoured Battle Console — a Django + Bootstrap browser wargame on real India–Pakistan border terrain with a tick-based Python simulation engine, 4v4 rooms with AI fill-in, CesiumJS 3D globe, AI Red agent and AI Tactical Advisor. Use for any change to the engine, rooms, admin console, battle UI, replay/AAR, assets or docs in this repo.
+description: Build, extend and debug the Armoured Battle Console — a Django + Bootstrap browser wargame on real India–Pakistan border terrain with a tick-based Python simulation engine, 4v4 rooms with AI fill-in, CesiumJS 3D globe, AI Red agent and AI Tactical Advisor. Use for any change to the engine, rooms, admin console, battle UI, replay/AAR, assets or docs in this repo.
 ---
 
-# AI-DSSW Armoured Battle Console — Project Skill
+# Armoured Battle Console — Project Skill
 
 Company capability-test project. Requirements live in `docs/REQUIREMENTS.md` (every
 requirement has an ID such as `SC-4`, `PL-5`, `DC-2`; cite IDs in commits, tests and PRs).

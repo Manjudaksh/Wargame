@@ -360,7 +360,9 @@ export class DriveController {
       const st = ammo <= 0 ? 'EMPTY' : rl > 0 ? `RELOAD ${rl.toFixed(1)}s` : 'READY';
       return `<div class="${i === this.weapon ? 'act' : ''}">${i + 1} ${w.name.toUpperCase()} · ${w.round} · <b>${ammo}</b> · ${st}</div>`;
     }).join('');
-    $('#h-kills').textContent = `KILLS ${u.k}`;
+    // top bar (team totals) is hidden while playing, so show them here next to the personal count
+    const tk = this.scene.cur?.kills;
+    $('#h-kills').textContent = tk ? `KILLS ${u.k} · BLUE ${tk.BLUE} – RED ${tk.RED}` : `KILLS ${u.k}`;
     this.drawScope(u);
     this.drawMarkers(u, now);
     this.drawMinimap(u);

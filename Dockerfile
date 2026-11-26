@@ -1,4 +1,4 @@
-# AI-DSSW Armoured Battle Console — one image for Linux, Windows (Docker Desktop / WSL 2) and macOS.
+# Armoured Battle Console — one image for Linux, Windows (Docker Desktop / WSL 2) and macOS.
 # Build and run everything with:  docker compose up -d   →  http://localhost:8000
 FROM python:3.11-slim
 

@@ -1,0 +1,66 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Vector Data Management · Armoured Battle Console{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <div class="mb-3"><div class="hud-font text-muted2 small">MAP DATA</div><h2 class="hud-font mb-0">Vector Data Management</h2></div>
+  <p class="small text-muted2">Regional geographic layers for map visualisation. Create a region, then upload datasets to it. Uploads are checked and converted to vector tiles in the background; the live version is replaced only after processing succeeds. Open maps update by themselves within about 30 seconds.</p>
+  <div id="page-error" class="alert alert-danger small d-none"></div>
+
+  <div class="row g-3">
+    <div class="col-xl-3 col-lg-4">
+      <div class="panel p-3 mb-3">
+        <div class="hud-font mb-2">UPLOAD DATASET</div>
+        <form id="upload-form" class="vstack gap-2">
+          <div id="replace-note" class="alert alert-warning small py-2 mb-0 d-none"><span></span> <button type="button" class="btn btn-sm btn-link p-0" id="replace-cancel">Cancel</button></div>
+          <select class="form-select form-select-sm" id="u-region" required></select>
+          <input class="form-control form-control-sm" id="u-name" maxlength="100" placeholder="Dataset name, e.g. Roads and rivers" required>
+          <textarea class="form-control form-control-sm" id="u-desc" rows="2" maxlength="2000" placeholder="Description (optional)"></textarea>
+          <div><div class="small text-muted2 mb-1">This dataset contains</div><div id="u-types" class="row g-0 small"></div></div>
+          <div><input class="form-control form-control-sm" type="file" id="u-files" multiple required accept=".geojson,.json,.gpkg,.pbf,.zip,.shp,.shx,.dbf,.prj,.cpg">
+            <div class="form-text">GeoJSON, GeoPackage, .osm.pbf, or a Shapefile (.zip, or .shp + .shx + .dbf + .prj). Limit <span id="u-limit">…</span> MB.</div></div>
+          <label class="small">Maximum tile zoom
+            <select class="form-select form-select-sm" id="u-zoom"><option value="">14 (default)</option><option value="12">12 (smaller, less detail)</option><option value="13">13</option><option value="15">15 (more tiles)</option></select></label>
+          <div class="form-check small"><input class="form-check-input" type="checkbox" id="u-activate" checked><label class="form-check-label" for="u-activate">Activate when processing succeeds</label></div>
+          <button class="btn btn-tac" id="u-submit"><i class="bi bi-upload"></i> Upload &amp; process</button>
+          <div id="u-result" class="small"></div>
+        </form>
+      </div>
+
+      <div class="panel p-3">
+        <div class="hud-font mb-2"><span id="region-title">NEW REGION</span></div>
+        <form id="region-form" class="vstack gap-2">
+          <input class="form-control form-control-sm" id="r-name" maxlength="100" placeholder="Region name" required>
+          <textarea class="form-control form-control-sm" id="r-desc" rows="2" maxlength="2000" placeholder="Description (optional)"></textarea>
+          <label class="small">Coverage is defined by
+            <select class="form-select form-select-sm" id="r-mode">
+              <option value="BORDER">a section of the border layer</option>
+              <option value="GEOMETRY">a boundary line or area (GeoJSON)</option>
+              <option value="POINT">a centre point</option>
+              <option value="KEEP" hidden>keep the current shape</option>
+            </select></label>
+          <div data-mode="BORDER"><input class="form-control form-control-sm mono" id="r-bbox" placeholder="west, south, east, north">
+            <div class="form-text">The border lines inside this lon/lat box become the reference line.</div></div>
+          <div data-mode="GEOMETRY" class="d-none"><input class="form-control form-control-sm" type="file" id="r-file" accept=".geojson,.json"></div>
+          <div data-mode="POINT" class="d-none input-group input-group-sm"><input class="form-control" id="r-lon" placeholder="Longitude"><input class="form-control" id="r-lat" placeholder="Latitude"></div>
+          <label class="small">Range around it (km)<input class="form-control form-control-sm" type="number" id="r-range" value="100" min="0" max="500" step="1" required></label>
+          <div class="d-flex gap-2"><button class="btn btn-tac flex-fill" id="r-submit">Create region</button><button type="button" class="btn btn-outline-secondary d-none" id="r-cancel">Cancel</button></div>
+          <div id="r-result" class="small"></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-xl-9 col-lg-8">
+      <div class="panel mb-3"><div class="panel-head"><i class="bi bi-globe-asia-australia"></i> Regions and their active datasets</div>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0 small">
+          <thead><tr><th>Region</th><th>Coverage</th><th>Currently active</th><th></th></tr></thead><tbody id="regions"></tbody></table></div>
+        <canvas id="coverage-preview" style="width:100%;height:260px;display:block;background:#0b1a24"></canvas>
+        <div class="small text-muted2 px-3 py-2" id="coverage-cap">Select a region to preview its coverage (shaded) and the border layer (yellow).</div>
+      </div>
+      <div class="panel"><div class="panel-head"><i class="bi bi-database"></i> Datasets <span class="ms-auto small text-muted2" id="engine"></span></div>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0 small">
+          <thead><tr><th>Dataset</th><th>Ver.</th><th>Status</th><th>Source</th><th>Content</th><th>Uploaded</th><th class="text-end">Actions</th></tr></thead><tbody id="datasets"></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'js/vectoradmin.js' %}"></script>{% endblock %}

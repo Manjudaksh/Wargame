@@ -1,6 +1,6 @@
 # Interfaces
 
-Interactive REST documentation: **`/api/docs/`** (Swagger UI); machine-readable schema: **`/api/schema/`**.
+Interactive REST documentation: **`/api/docs/`** (Swagger UI); machine-readable schema: **`/api/schema/`**. Both need a signed-in staff account.
 Administrators authenticate with a Django session (POST `/api/auth/login/`, then send `X-CSRFToken`).
 Players get a token from `/api/join/` and send it as `X-Player-Token` (REST) or in the `join` message (WebSocket).
 
