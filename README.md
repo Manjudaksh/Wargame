@@ -1,4 +1,4 @@
-# AI-DSSW — Armoured Battle Console
+# Armoured Battle Console
 
 A browser wargame on real India–Pakistan border terrain: futuristic armoured battle groups,
 4 v 4 rooms where the AI fills every empty slot, a tick-based Python simulation (terrain slope,
